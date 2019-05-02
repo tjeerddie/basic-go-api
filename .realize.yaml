@@ -1,25 +1,20 @@
 settings:
   legacy:
     force: false
-    interval: 100s
+    interval: 0s
 schema:
 - name: basic-go-api
   path: .
   commands:
-    install:
-      status: true
     run:
       status: true
-  args:
-    - server
-    - --log-level=info
   watcher:
-    paths:
-    - ../
     extensions:
     - go
-    ignored_paths:
-    - ./.git
-    - ./.realize
-    - ./vendor
-    - ./go.mod
+    paths:
+    - /
+    ignore:
+      paths:
+      - .git
+      - .realize
+      - vendor
