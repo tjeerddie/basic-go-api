@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"fmt"
-	"log"
 	"database/sql"
 	"encoding/json"
-	"net/http"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/tjeerddie/basic-go-api/entities"
@@ -14,13 +14,12 @@ import (
 )
 
 var (
-	listQuery = "SELECT * FROM `user`"
+	listQuery   = "SELECT * FROM `user`"
 	singleQuery = "SELECT * FROM `user` WHERE id=?"
 	createQuery = "INSERT INTO `user` (email, password) VALUES (?) RETURNING id"
 	updateQuery = "UPDATE `user` SET (?) WHERE id=?"
 	deleteQuery = "DELETE FROM `user` WHERE id=?"
 )
-
 
 // UserList returns a list of users.
 func UserList(db *sql.DB) httprouter.Handle {
@@ -28,21 +27,21 @@ func UserList(db *sql.DB) httprouter.Handle {
 		rows, err := db.Query(listQuery)
 		if err != nil {
 			log.Fatal("Database connection failed: %s", err.Error())
-			return;
+			return
 		}
 
 		var (
-			id          int
-			email       string
-			password    string
-			userList    []entities.User
+			id       int
+			email    string
+			password string
+			userList []entities.User
 		)
 
 		for rows.Next() {
 			err = rows.Scan(&id, &email, &password)
 			userList = append(userList, entities.User{
-				Id: id,
-				Email: email,
+				Id:       id,
+				Email:    email,
 				Password: password,
 			})
 		}
@@ -55,18 +54,18 @@ func UserList(db *sql.DB) httprouter.Handle {
 func UserSingle(db *sql.DB) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var (
-			findId string = ps.ByName("id")
-			id int
-			email string
+			findId   string = ps.ByName("id")
+			id       int
+			email    string
 			password string
-			user entities.User
+			user     entities.User
 		)
 		row := db.QueryRow(singleQuery, findId)
 
 		if err := row.Scan(&id, &email, &password); err != nil {
 			if err == sql.ErrNoRows {
 				resphdr.WriteErrorResponse(
-					w, http.StatusNotFound, "User not found: " + findId,
+					w, http.StatusNotFound, "User not found: "+findId,
 				)
 				return
 			} else {
@@ -75,8 +74,8 @@ func UserSingle(db *sql.DB) httprouter.Handle {
 			}
 		}
 		user = entities.User{
-			Id: id,
-			Email: email,
+			Id:       id,
+			Email:    email,
 			Password: password,
 		}
 
