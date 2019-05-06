@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tjeerddie/basic-go-api/config"
-	"github.com/tjeerddie/basic-go-api/service"
+	serverService "github.com/tjeerddie/basic-go-api/server"
 )
 
 var configFile = ".env"
@@ -13,7 +13,7 @@ var defaultPort = "8000"
 func main() {
 	config.ReadDotEnv(configFile)
 	address := fmt.Sprintf(":%s", config.Getenv("PORT", defaultPort))
-	server := service.New(address)
+	server := serverService.New(address)
 	defer server.Close()
 	server.ListenAndServe()
 }

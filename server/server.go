@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/tjeerddie/basic-go-api/handlers"
+	"github.com/tjeerddie/basic-go-api/repository/sqlrepo"
+
 )
 
 const (
@@ -27,12 +28,15 @@ const (
 
 type Server struct {
 	Server     *http.Server
-	Repository *sql.DB
+	Repository *sqlrepo.Repository
 }
 
 // New function creates the routes and returns the router
 func New(address string) *Server {
-	repo := setupDB()
+	connectionString := fmt.Sprintf(
+		"%s:%s@tcp(%s)/%s", user, password, serverName, dbName,
+	)
+	repo := sqlrepo.New(connectionString)
 	router := setupRoutes(repo)
 	srv := http.Server{Addr: address, Handler: router}
 	return &Server{
@@ -41,18 +45,7 @@ func New(address string) *Server {
 	}
 }
 
-func setupDB() *sql.DB {
-	connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, serverName, dbName)
-
-	db, err := sql.Open("mysql", connectionString)
-	if err != nil {
-		log.Fatal("Database connection failed: %s", err.Error())
-	}
-
-	return db
-}
-
-func setupRoutes(repo *sql.DB) *httprouter.Router {
+func setupRoutes(repo *sqlrepo.Repository) *httprouter.Router {
 	router := httprouter.New()
 	router.GET("/", handlers.Index)
 	router.GET("/hello/:name", handlers.Hello)
@@ -60,12 +53,12 @@ func setupRoutes(repo *sql.DB) *httprouter.Router {
 	return router
 }
 
-func userRoutes(router *httprouter.Router, repo *sql.DB) {
+func userRoutes(router *httprouter.Router, repo *sqlrepo.Repository) {
 	router.GET("/users", handlers.UserList(repo))
 	router.GET("/users/:id", handlers.UserSingle(repo))
 	router.POST("/users", handlers.UserCreate(repo))
-	router.PUT("/users/:id", handlers.UserUpdate(repo))
-	router.DELETE("/users/:id", handlers.UserDelete(repo))
+	// router.PUT("/users/:id", handlers.UserUpdate(repo))
+	// router.DELETE("/users/:id", handlers.UserDelete(repo))
 }
 
 func (s *Server) ListenAndServe() {

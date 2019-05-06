@@ -1,82 +1,50 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/tjeerddie/basic-go-api/entities"
+	"github.com/tjeerddie/basic-go-api/repository"
 	resphdr "github.com/tjeerddie/basic-go-api/handlers/responsehandler"
 )
 
-var (
-	listQuery   = "SELECT * FROM `user`"
-	singleQuery = "SELECT * FROM `user` WHERE id=?"
-	createQuery = "INSERT INTO `user` (email, password) VALUES (?) RETURNING id"
-	updateQuery = "UPDATE `user` SET (?) WHERE id=?"
-	deleteQuery = "DELETE FROM `user` WHERE id=?"
-)
-
 // UserList returns a list of users.
-func UserList(db *sql.DB) httprouter.Handle {
+func UserList(repo repository.Repository) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		rows, err := db.Query(listQuery)
+		users, err := repo.Users()
 		if err != nil {
-			log.Fatal("Database connection failed: %s", err.Error())
+			resphdr.WriteErrorResponse(
+				w, http.StatusInternalServerError, fmt.Sprintf("Internal server error: %s", err.Error()),
+			)
 			return
 		}
 
-		var (
-			id       int
-			email    string
-			password string
-			userList []entities.User
-		)
-
-		for rows.Next() {
-			err = rows.Scan(&id, &email, &password)
-			userList = append(userList, entities.User{
-				Id:       id,
-				Email:    email,
-				Password: password,
-			})
-		}
-
-		resphdr.WriteOKResponse(w, userList)
+		resphdr.WriteOKResponse(w, users)
 	}
 }
 
 // UserSingle returns a single user.
-func UserSingle(db *sql.DB) httprouter.Handle {
+func UserSingle(repo repository.Repository) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var (
-			findId   string = ps.ByName("id")
-			id       int
-			email    string
-			password string
-			user     entities.User
-		)
-		row := db.QueryRow(singleQuery, findId)
-
-		if err := row.Scan(&id, &email, &password); err != nil {
-			if err == sql.ErrNoRows {
-				resphdr.WriteErrorResponse(
-					w, http.StatusNotFound, "User not found: "+findId,
-				)
-				return
-			} else {
-				log.Fatal("Database connection failed: %s", err.Error())
-				return
-			}
+		id, err := strconv.Atoi(ps.ByName("id"))
+		if err != nil {
+			resphdr.WriteErrorResponse(
+				w, http.StatusInternalServerError, fmt.Sprintf("Internal server error: %s", err.Error()),
+			)
+			return
 		}
-		user = entities.User{
-			Id:       id,
-			Email:    email,
-			Password: password,
+
+		user, err := repo.UserSingle(id)
+		if err != nil {
+			resphdr.WriteErrorResponse(
+				w, http.StatusInternalServerError, err.Error(),
+			)
+			return
 		}
 
 		fmt.Printf("%+v\n", user)
@@ -85,8 +53,9 @@ func UserSingle(db *sql.DB) httprouter.Handle {
 }
 
 // UserCreate creates a new user.
-func UserCreate(db *sql.DB) httprouter.Handle {
+func UserCreate(repo repository.Repository) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			resphdr.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
@@ -99,10 +68,10 @@ func UserCreate(db *sql.DB) httprouter.Handle {
 			return
 		}
 
-		row := db.QueryRow(createQuery, user.Email, user.Password)
-		if err := row.Scan(&user.Id); err != nil {
+		err = repo.UserStore(&user)
+		if err != nil {
 			resphdr.WriteErrorResponse(
-				w, http.StatusInternalServerError, "Internal Server Error",
+				w, http.StatusInternalServerError, err.Error(),
 			)
 			return
 		}
@@ -112,14 +81,14 @@ func UserCreate(db *sql.DB) httprouter.Handle {
 }
 
 // UserUpdate updates a existing user.
-func UserUpdate(db *sql.DB) httprouter.Handle {
+func UserUpdate(repo repository.Repository) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "update, %s!\n", ps.ByName("name"))
 	}
 }
 
 // UserDelete deletes a existing user.
-func UserDelete(db *sql.DB) httprouter.Handle {
+func UserDelete(repo repository.Repository) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "delete, %s!\n", ps.ByName("name"))
 	}
